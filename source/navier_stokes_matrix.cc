@@ -709,9 +709,10 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
           if (parameters.physical_type != FlowParameters::stokes)
             {
               // variable parameters if present
-              const vector_t           rho = use_variable_coefficients ?
-                                               rho_values[q] :
-                                               make_vectorized_array<double>(parameters.density);
+              const vector_t rho = use_variable_coefficients ?
+                                     rho_values[q] :
+                                     make_vectorized_array<double>(parameters.density);
+
               Tensor<1, dim, vector_t> val_u =
                 convert_to_vector<dim, vector_t>(velocity.get_value(q));
 
@@ -827,8 +828,7 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
                   }
               conv *= rho;
 
-              // damping K * u_new with the damping coefficient K; this expression
-              // is NOT considered in the NavierStokesPreconditioner
+              // damping K * u_new with the damping coefficient K
               const vector_t damping =
                 use_variable_coefficients ?
                   damping_values[q] :
@@ -845,7 +845,6 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
                                tau1;
           const vector_t tmu_times_2 = 2. * tmu;
 
-
           // get divergence, extract pressure, integrate (p, -div (u)), which
           // writes into the pressure field
           vector_t pres;
@@ -857,38 +856,64 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
               pressure.submit_value(-divergence, q);
             }
 
-          vector_t sym;
-          switch (dim)
+          if (parameters.constitutive_type ==
+                FlowParameters::newtonian_compressible_stokes_hypothesis ||
+              parameters.constitutive_type == FlowParameters::newtonian_incompressible)
             {
+              vector_t sym;
+              switch (dim)
+                {
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-              case 3:
-                sym          = tmu * (grad_u[0][2] + grad_u[2][0]);
-                grad_u[0][2] = sym;
-                grad_u[2][0] = sym;
-                sym          = tmu * (grad_u[1][2] + grad_u[2][1]);
-                grad_u[1][2] = sym;
-                grad_u[2][1] = sym;
-              // fall through to part that is also present also in 2D
-              case 2:
-                sym          = tmu * (grad_u[0][1] + grad_u[1][0]);
-                grad_u[0][1] = sym;
-                grad_u[1][0] = sym;
-                break;
-              case 1: // nothing todo
-                break;
-              default:
-                Assert(false, ExcNotImplemented());
+                  case 3:
+                    sym          = tmu * (grad_u[0][2] + grad_u[2][0]);
+                    grad_u[0][2] = sym;
+                    grad_u[2][0] = sym;
+                    sym          = tmu * (grad_u[1][2] + grad_u[2][1]);
+                    grad_u[1][2] = sym;
+                    grad_u[2][1] = sym;
+                  // fall through to part that is also present also in 2D
+                  case 2:
+                    sym          = tmu * (grad_u[0][1] + grad_u[1][0]);
+                    grad_u[0][1] = sym;
+                    grad_u[1][0] = sym;
+                    break;
+                  case 1: // nothing todo
+                    break;
+                  default:
+                    Assert(false, ExcNotImplemented());
 #pragma GCC diagnostic push
+                }
+
+              for (unsigned int d = 0; d < dim; ++d)
+                {
+                  grad_u[d][d] =
+                    tmu_times_2 * grad_u[d][d] + parameters.tau_grad_div * divergence;
+
+                  // In case of Newtonian compressible constitutive type, subtract the
+                  // volumetric part from the rate of deformation tensor.
+                  if (parameters.constitutive_type ==
+                      FlowParameters::newtonian_compressible_stokes_hypothesis)
+                    grad_u[d][d] -= tmu_times_2 * divergence / static_cast<double>(dim);
+                }
             }
-          // add pressure
-          for (unsigned int d = 0; d < dim; ++d)
+          else if (parameters.constitutive_type == FlowParameters::user_defined)
             {
-              grad_u[d][d] =
-                tmu_times_2 * grad_u[d][d] + parameters.tau_grad_div * divergence;
-              if (LocalOps == NavierStokesOps::vmult ||
-                  LocalOps == NavierStokesOps::residual)
-                grad_u[d][d] -= pres;
+              Tensor<2, dim, vector_t> grad_u_temp =
+                convert_to_tensor<2, dim, vector_t>(velocity.get_gradient(q));
+              grad_u =
+                tau1 * user_defined_material(
+                         grad_u_temp,
+                         cell,
+                         q,
+                         LocalOps != NavierStokesOps::residual /*tangent is computed*/);
             }
+          else
+            AssertThrow(false, ExcMessage("Requested ConstitutiveType not found."));
+
+          // add pressure
+          if (LocalOps == NavierStokesOps::vmult || LocalOps == NavierStokesOps::residual)
+            for (unsigned int d = 0; d < dim; ++d)
+              grad_u[d][d] -= pres;
 
           velocity.submit_gradient(grad_u, q);
         }
@@ -930,14 +955,14 @@ adaflo::NavierStokesMatrix<dim>::local_divergence(
   FEEvaluation<dim, degree_p == -1 ? -1 : (degree_p + 1), degree_p + 2, dim> velocity(
     data, dof_index_u, quad_index_u);
   FEEvaluation<dim, degree_p, degree_p + 2, 1> pressure(data, dof_index_p, quad_index_u);
-
-  const VectorizedArray<double> *mu_values =
+  const VectorizedArray<double>               *mu_values =
     variable_viscosities.empty() ? 0 : begin_viscosities(cell_range.first);
 
   for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
     {
       pressure.reinit(cell);
       velocity.reinit(cell);
+
       if (parameters.linearization == FlowParameters::projection)
         velocity.read_dof_values_plain(src);
       else

@@ -61,11 +61,8 @@ namespace adaflo
     } physical_type;
 
     std::map<std::string, double> get_beta_formulation_convective_term_momentum_balance =
-      {
-        {"conservative", 1.0},
-        {"convective", 0.0},
-        {"skew-symmetric", 0.5},
-    };
+      {{"conservative", 1.0}, {"convective", 0.0}, {"skew-symmetric", 0.5}};
+
     double       beta_convective_term_momentum_balance;
     unsigned int velocity_degree;
     bool         augmented_taylor_hood;
@@ -140,8 +137,14 @@ namespace adaflo
     unsigned int n_reinit_steps;                 // only for level set
     unsigned int n_initial_reinit_steps;         // only for level set
     bool         convection_stabilization;
+
+    enum ConstitutiveType
+    {
+      newtonian_compressible_stokes_hypothesis,
+      newtonian_incompressible,
+      user_defined
+    } constitutive_type;
   };
 } // namespace adaflo
-
 
 #endif

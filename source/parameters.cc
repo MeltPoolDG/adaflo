@@ -121,6 +121,15 @@ adaflo::FlowParameters::declare_parameters(ParameterHandler &prm)
                     "Navier-Stokes, one can choose between a stationary and a "
                     "time-dependent variant. The time-dependent Navier-Stokes "
                     "equations are the default.");
+  prm.declare_entry(
+    "constitutive type",
+    "newtonian incompressible",
+    Patterns::Selection(
+      "newtonian incompressible|newtonian compressible stokes hypothesis|user defined"),
+    "Sets the type of constitutive equations. The incompressible Newtonian "
+    "fluid assumption is the default case. Alternatively, a compressible "
+    "Newtonian fluid formulation exploiting the Stokes hypothesis or a "
+    "user defined type can be chosen.");
   prm.declare_entry("formulation convective term momentum balance",
                     "skew-symmetric",
                     Patterns::Selection("skew-symmetric|convective|conservative"),
@@ -476,6 +485,15 @@ adaflo::FlowParameters::parse_parameters(ParameterHandler &prm)
     Assert(false, ExcNotImplemented());
   if (physical_type == stokes)
     density = 0;
+  type = prm.get("constitutive type");
+  if (type == "newtonian incompressible")
+    constitutive_type = newtonian_incompressible;
+  else if (type == "newtonian compressible stokes hypothesis")
+    constitutive_type = newtonian_compressible_stokes_hypothesis;
+  else if (type == "user defined")
+    constitutive_type = user_defined;
+  else
+    Assert(false, ExcNotImplemented());
   beta_convective_term_momentum_balance =
     get_beta_formulation_convective_term_momentum_balance[prm.get(
       "formulation convective term momentum balance")];

@@ -1135,7 +1135,7 @@ NavierStokes<dim>::solve_nonlinear_system(const double initial_residual)
       std::cout.flags(flags);
     }
 
-  return step;
+  return step + 1;
 }
 
 

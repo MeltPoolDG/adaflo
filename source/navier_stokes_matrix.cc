@@ -40,11 +40,11 @@
 
 template <int dim>
 NavierStokesMatrix<dim>::NavierStokesMatrix(
-  const FlowParameters &                                 parameters,
-  const unsigned int &                                   dof_index_u,
-  const unsigned int &                                   dof_index_p,
-  const unsigned int &                                   quad_index_u,
-  const unsigned int &                                   quad_index_p,
+  const FlowParameters                                  &parameters,
+  const unsigned int                                    &dof_index_u,
+  const unsigned int                                    &dof_index_p,
+  const unsigned int                                    &quad_index_u,
+  const unsigned int                                    &quad_index_p,
   const LinearAlgebra::distributed::BlockVector<double> &solution_old,
   const LinearAlgebra::distributed::BlockVector<double> &solution_old_old)
   : matrix_free(0)
@@ -84,7 +84,7 @@ NavierStokesMatrix<dim>::NavierStokesMatrix(
 template <int dim>
 void
 NavierStokesMatrix<dim>::initialize(const MatrixFree<dim> &matrix_free_in,
-                                    const TimeStepping &   time_stepping_in,
+                                    const TimeStepping    &time_stepping_in,
                                     const bool             pressure_average_fix)
 {
   matrix_free                       = &matrix_free_in;
@@ -221,7 +221,7 @@ NavierStokesMatrix<dim>::apply_pressure_shift(
 template <int dim>
 void
 NavierStokesMatrix<dim>::vmult(
-  LinearAlgebra::distributed::BlockVector<double> &      dst,
+  LinearAlgebra::distributed::BlockVector<double>       &dst,
   const LinearAlgebra::distributed::BlockVector<double> &src) const
 {
   Timer time;
@@ -265,7 +265,7 @@ NavierStokesMatrix<dim>::vmult(
 template <int dim>
 void
 NavierStokesMatrix<dim>::residual(
-  LinearAlgebra::distributed::BlockVector<double> &      system_rhs,
+  LinearAlgebra::distributed::BlockVector<double>       &system_rhs,
   const LinearAlgebra::distributed::BlockVector<double> &src,
   const LinearAlgebra::distributed::BlockVector<double> &user_rhs) const
 {
@@ -299,7 +299,7 @@ NavierStokesMatrix<dim>::residual(
 template <int dim>
 void
 NavierStokesMatrix<dim>::divergence_vmult_add(
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src,
   const bool                                        weight_by_viscosity) const
 {
@@ -336,7 +336,7 @@ NavierStokesMatrix<dim>::divergence_vmult_add(
 template <int dim>
 void
 NavierStokesMatrix<dim>::velocity_vmult(
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src) const
 {
   Assert(matrix_free != 0, ExcNotInitialized());
@@ -385,7 +385,7 @@ NavierStokesMatrix<dim>::velocity_vmult(
 template <int dim>
 void
 NavierStokesMatrix<dim>::pressure_poisson_vmult(
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src) const
 {
   Assert(matrix_free != 0, ExcNotInitialized());
@@ -420,7 +420,7 @@ NavierStokesMatrix<dim>::pressure_poisson_vmult(
 template <int dim>
 void
 NavierStokesMatrix<dim>::pressure_mass_vmult(
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src) const
 {
   Assert(matrix_free != 0, ExcNotInitialized());
@@ -458,7 +458,7 @@ NavierStokesMatrix<dim>::pressure_mass_vmult(
 template <int dim>
 void
 NavierStokesMatrix<dim>::pressure_convdiff_vmult(
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src) const
 {
   Assert(matrix_free != 0, ExcNotInitialized());
@@ -494,7 +494,7 @@ namespace
 {
   template <typename FEEval>
   inline void
-  get_velocity_values(FEEval &                                               fe_eval,
+  get_velocity_values(FEEval                                                &fe_eval,
                       const LinearAlgebra::distributed::BlockVector<double> &vec)
   {
     fe_eval.read_dof_values(vec.block(0));
@@ -510,7 +510,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  get_velocity_values(FEEval &                                          fe_eval,
+  get_velocity_values(FEEval                                           &fe_eval,
                       const LinearAlgebra::distributed::Vector<double> &vec)
   {
     fe_eval.read_dof_values(vec);
@@ -518,7 +518,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  get_velocity_values_plain(FEEval &                                          fe_eval,
+  get_velocity_values_plain(FEEval                                           &fe_eval,
                             const LinearAlgebra::distributed::Vector<double> &vec)
   {
     fe_eval.read_dof_values(vec);
@@ -526,7 +526,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  get_pressure_values(FEEval &                                               fe_eval,
+  get_pressure_values(FEEval                                                &fe_eval,
                       const LinearAlgebra::distributed::BlockVector<double> &vec)
   {
     fe_eval.read_dof_values(vec.block(1));
@@ -542,7 +542,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  get_pressure_values(FEEval &                                          fe_eval,
+  get_pressure_values(FEEval                                           &fe_eval,
                       const LinearAlgebra::distributed::Vector<double> &vec)
   {
     fe_eval.read_dof_values(vec);
@@ -550,7 +550,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  get_pressure_values_plain(FEEval &                                          fe_eval,
+  get_pressure_values_plain(FEEval                                           &fe_eval,
                             const LinearAlgebra::distributed::Vector<double> &vec)
   {
     fe_eval.read_dof_values(vec);
@@ -558,7 +558,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  distribute_velocity_ltg(FEEval &                                         fe_eval,
+  distribute_velocity_ltg(FEEval                                          &fe_eval,
                           LinearAlgebra::distributed::BlockVector<double> &vec)
   {
     fe_eval.distribute_local_to_global(vec.block(0));
@@ -566,7 +566,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  distribute_velocity_ltg(FEEval &                                    fe_eval,
+  distribute_velocity_ltg(FEEval                                     &fe_eval,
                           LinearAlgebra::distributed::Vector<double> &vec)
   {
     fe_eval.distribute_local_to_global(vec);
@@ -574,7 +574,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  distribute_pressure_ltg(FEEval &                                         fe_eval,
+  distribute_pressure_ltg(FEEval                                          &fe_eval,
                           LinearAlgebra::distributed::BlockVector<double> &vec)
   {
     fe_eval.distribute_local_to_global(vec.block(1));
@@ -582,7 +582,7 @@ namespace
 
   template <typename FEEval>
   inline void
-  distribute_pressure_ltg(FEEval &                                    fe_eval,
+  distribute_pressure_ltg(FEEval                                     &fe_eval,
                           LinearAlgebra::distributed::Vector<double> &vec)
   {
     fe_eval.distribute_local_to_global(vec);
@@ -601,9 +601,9 @@ template <int dim>
 template <int degree_p, typename VectorType, int LocalOps>
 void
 NavierStokesMatrix<dim>::local_operation(
-  const MatrixFree<dim> &                      data,
-  VectorType &                                 dst,
-  const VectorType &                           src,
+  const MatrixFree<dim>                       &data,
+  VectorType                                  &dst,
+  const VectorType                            &src,
   const std::pair<unsigned int, unsigned int> &cell_range) const
 {
   typedef VectorizedArray<double>                                            vector_t;
@@ -913,7 +913,10 @@ NavierStokesMatrix<dim>::local_operation(
             for (unsigned int d = 0; d < dim; ++d)
               grad_u[d][d] -= pres;
 
-          velocity.submit_gradient(grad_u, q);
+          if constexpr (dim == 1)
+            velocity.submit_gradient(grad_u[0], q);
+          else
+            velocity.submit_gradient(grad_u, q);
         }
 
       // finally, integrate velocity and pressure and increase pointers to
@@ -945,15 +948,15 @@ template <int dim>
 template <int degree_p, const bool weight_by_viscosity>
 void
 NavierStokesMatrix<dim>::local_divergence(
-  const MatrixFree<dim> &                           data,
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  const MatrixFree<dim>                            &data,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src,
-  const std::pair<unsigned int, unsigned int> &     cell_range) const
+  const std::pair<unsigned int, unsigned int>      &cell_range) const
 {
   FEEvaluation<dim, degree_p == -1 ? -1 : (degree_p + 1), degree_p + 2, dim> velocity(
     data, dof_index_u, quad_index_u);
   FEEvaluation<dim, degree_p, degree_p + 2, 1> pressure(data, dof_index_p, quad_index_u);
-  const VectorizedArray<double> *              mu_values =
+  const VectorizedArray<double>               *mu_values =
     variable_viscosities.empty() ? 0 : begin_viscosities(cell_range.first);
 
   for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
@@ -976,7 +979,10 @@ NavierStokesMatrix<dim>::local_divergence(
                  -mu_values[q]) :
               make_vectorized_array(-1.);
 
-          pressure.submit_value(weight * velocity.get_divergence(q), q);
+          if constexpr (dim == 1)
+            pressure.submit_value(weight * velocity.get_gradient(q), q);
+          else
+            pressure.submit_value(weight * velocity.get_divergence(q), q);
         }
 
       pressure.integrate(EvaluationFlags::values);
@@ -990,10 +996,10 @@ template <int dim>
 template <int degree_p>
 void
 NavierStokesMatrix<dim>::local_pressure_poisson(
-  const MatrixFree<dim> &                           data,
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  const MatrixFree<dim>                            &data,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src,
-  const std::pair<unsigned int, unsigned int> &     cell_range) const
+  const std::pair<unsigned int, unsigned int>      &cell_range) const
 {
   typedef VectorizedArray<double> vector_t;
   const bool                      use_variable_coefficients =
@@ -1061,10 +1067,10 @@ template <int dim>
 template <int degree_p>
 void
 NavierStokesMatrix<dim>::local_pressure_mass(
-  const MatrixFree<dim> &                           data,
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  const MatrixFree<dim>                            &data,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src,
-  const std::pair<unsigned int, unsigned int> &     cell_range) const
+  const std::pair<unsigned int, unsigned int>      &cell_range) const
 {
   typedef VectorizedArray<double>              vector_t;
   FEEvaluation<dim, degree_p, degree_p + 1, 1> pressure(data, dof_index_p, quad_index_p);
@@ -1100,7 +1106,7 @@ template <int dim>
 template <int degree_p>
 void
 NavierStokesMatrix<dim>::local_pressure_mass_weight(
-  const MatrixFree<dim> &                     data,
+  const MatrixFree<dim>                      &data,
   LinearAlgebra::distributed::Vector<double> &dst,
   const unsigned int &,
   const std::pair<unsigned int, unsigned int> &cell_range) const
@@ -1124,10 +1130,10 @@ template <int dim>
 template <int degree_p>
 void
 NavierStokesMatrix<dim>::local_pressure_convdiff(
-  const MatrixFree<dim> &                           data,
-  LinearAlgebra::distributed::Vector<double> &      dst,
+  const MatrixFree<dim>                            &data,
+  LinearAlgebra::distributed::Vector<double>       &dst,
   const LinearAlgebra::distributed::Vector<double> &src,
-  const std::pair<unsigned int, unsigned int> &     cell_range) const
+  const std::pair<unsigned int, unsigned int>      &cell_range) const
 {
   typedef VectorizedArray<double>              vector_t;
   FEEvaluation<dim, degree_p, degree_p + 2, 1> pressure(data, dof_index_p, quad_index_u);

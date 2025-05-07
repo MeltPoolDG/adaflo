@@ -22,7 +22,7 @@ using namespace dealii;
 
 
 adaflo::FlowParameters::FlowParameters()
-  : dimension(numbers::invalid_unsigned_int)
+  : dimension(0)
 {
   // do nothing
 }
@@ -75,12 +75,14 @@ adaflo::FlowParameters::add_parameters(ParameterHandler &prm)
                     to_bool.use_anisotropic_refinement,
                     "defines whether the mesh should be refined "
                     "anisotropically in normal direction to the interface, "
-                    "0 means no anisotropy");
+                    "0 means no anisotropy",
+                    Patterns::Selection("0|1"));
   prm.add_parameter("simplex mesh",
                     to_bool.use_simplex_mesh,
                     "defines whether a simplex mesh has been provided, "
                     "0 means mesh with only quadrilaterals (2D) and hexahedra "
-                    "(3D) has been provided");
+                    "(3D) has been provided",
+                    Patterns::Selection("0|1"));
   prm.add_parameter("adaptive refinements",
                     adaptive_refinements,
                     "Defines the number of adaptive refinements. Not used "
@@ -98,10 +100,9 @@ adaflo::FlowParameters::add_parameters(ParameterHandler &prm)
                     "adds a constant discontinuous part to the pressure "
                     "basis and gives element-wise divergence-free solutions. "
                     "It produces solutions that are in general better but "
-                    "also a bit more expensive to compute.");
-  prm.add_parameter("viscosity",
-                    viscosity,
-                    "Defines the fluid dynamic viscosity");
+                    "also a bit more expensive to compute.",
+                    Patterns::Selection("0|1"));
+  prm.add_parameter("viscosity", viscosity, "Defines the fluid dynamic viscosity");
   prm.add_parameter("density", density, "Defines the fluid density", Patterns::Double());
   prm.add_parameter("damping", damping, "Defines the fluid damping", Patterns::Double());
   prm.add_parameter("physical type",
@@ -180,7 +181,8 @@ adaflo::FlowParameters::add_parameters(ParameterHandler &prm)
                     to_bool.rel_lin_iteration,
                     "Sets whether the residual for the linear solver "
                     "should be measured relative to the nonlinear residual "
-                    "(recommended option).");
+                    "(recommended option).",
+                    Patterns::Selection("0|1"));
   prm.add_parameter("lin velocity preconditioner",
                     uprec,
                     "Sets the preconditioner for approximating the inverse "
@@ -241,10 +243,12 @@ adaflo::FlowParameters::add_parameters(ParameterHandler &prm)
                     "whole solution field or just collected point data");
   prm.add_parameter("output wall times",
                     to_bool.output_wall_times,
-                    "Defines whether to output wall times. 0 means no output.");
+                    "Defines whether to output wall times. 0 means no output.",
+                    Patterns::Selection("0|1"));
   prm.add_parameter("output memory",
                     to_bool.output_memory,
-                    "Defines whether to output memory. 0 means no output.");
+                    "Defines whether to output memory. 0 means no output.",
+                    Patterns::Selection("0|1"));
   prm.leave_subsection();
 
   prm.enter_subsection("Two phase");
@@ -281,7 +285,8 @@ adaflo::FlowParameters::add_parameters(ParameterHandler &prm)
                     "at boundaries with indicator 0 or 2");
   prm.add_parameter("pressure constraint",
                     to_bool.pressure_constraint,
-                    "Fixes value of pressure in one point to zero");
+                    "Fixes value of pressure in one point to zero",
+                    Patterns::Selection("0|1"));
   prm.add_parameter("concentration subdivisions",
                     concentration_subdivisions,
                     "Number of subdivision of Q1 elements in smaller elements "
@@ -318,7 +323,7 @@ adaflo::FlowParameters::add_parameters(ParameterHandler &prm)
                     "Eyre.",
                     Patterns::Selection("0|1"));
   prm.add_parameter("full nonlinear iteration",
-                    do_iteration,
+                    to_bool.do_iteration,
                     "iterates between Navier-Stokes and concentration "
                     "if enabled",
                     Patterns::Selection("0|1"));
@@ -330,7 +335,7 @@ adaflo::FlowParameters::add_parameters(ParameterHandler &prm)
                     "reinitialization steps before starting the time "
                     "loop (for bad initial profiles)");
   prm.add_parameter("convection stabilization",
-                    convection_stabilization,
+                    to_bool.convection_stabilization,
                     "add stabilization terms to advection equation if "
                     "set to 1 (typically not necessary)",
                     Patterns::Selection("0|1"));
@@ -390,7 +395,7 @@ adaflo::FlowParameters::parse_parameters(const std::string parameter_file,
         {
           std::ifstream file;
           file.open(parameter_file);
-          prm.parse_input_from_json(file, true/*skip_undefined*/);
+          prm.parse_input_from_json(file, true /*skip_undefined*/);
         }
       else if (parameter_file.substr(parameter_file.find_last_of(".") + 1) == "prm")
         prm.parse_input(parameter_file);
@@ -494,7 +499,7 @@ adaflo::FlowParameters::post()
   if (time_step_size_min > time_step_size_start)
     time_step_size_max = time_step_size_min = time_step_size_start;
 
-  const std::string& schem = time_step_scheme_str;
+  const std::string &schem = time_step_scheme_str;
   if (schem == "implicit_euler")
     time_step_scheme = TimeSteppingParameters::Scheme::implicit_euler;
   else if (schem == "explicit_euler")
@@ -509,17 +514,17 @@ adaflo::FlowParameters::post()
     AssertThrow(false, ExcInternalError());
 
   // convert boolean variables
-  use_anisotropic_refinement     = to_bool.use_anisotropic_refinement    ;        
-  use_simplex_mesh               = to_bool.use_simplex_mesh              ;
-  augmented_taylor_hood          = to_bool.augmented_taylor_hood         ;
-  rel_lin_iteration              = to_bool.rel_lin_iteration             ;
-  pressure_constraint            = to_bool.pressure_constraint           ;
-  output_wall_times              = to_bool.output_wall_times             ;
-  output_memory                  = to_bool.output_memory                 ;
+  use_anisotropic_refinement     = to_bool.use_anisotropic_refinement;
+  use_simplex_mesh               = to_bool.use_simplex_mesh;
+  augmented_taylor_hood          = to_bool.augmented_taylor_hood;
+  rel_lin_iteration              = to_bool.rel_lin_iteration;
+  pressure_constraint            = to_bool.pressure_constraint;
+  output_wall_times              = to_bool.output_wall_times;
+  output_memory                  = to_bool.output_memory;
   interpolate_grad_onto_pressure = to_bool.interpolate_grad_onto_pressure;
   surface_tension_from_heaviside = to_bool.surface_tension_from_heaviside;
-  approximate_projections        = to_bool.approximate_projections       ;
-  ch_do_newton                   = to_bool.ch_do_newton                  ;
-  do_iteration                   = to_bool.do_iteration                  ;
-  convection_stabilization       = to_bool.convection_stabilization      ;
+  approximate_projections        = to_bool.approximate_projections;
+  ch_do_newton                   = to_bool.ch_do_newton;
+  do_iteration                   = to_bool.do_iteration;
+  convection_stabilization       = to_bool.convection_stabilization;
 }

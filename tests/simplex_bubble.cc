@@ -37,7 +37,7 @@ struct TwoPhaseParameters : public FlowParameters
   TwoPhaseParameters(const std::string &parameter_filename)
   {
     ParameterHandler prm;
-    FlowParameters::declare_parameters(prm);
+    add_parameters(prm);
     prm.enter_subsection("Problem-specific");
     prm.declare_entry("two-phase method",
                       "level set okz",

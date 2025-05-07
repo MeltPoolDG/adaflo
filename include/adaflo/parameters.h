@@ -29,29 +29,30 @@ namespace adaflo
 
   struct FlowParameters
   {
+  public:
     // allows to defer construction to a derived class. Handle with care, as
     // parameters are not default-initialized
     FlowParameters();
 
     FlowParameters(const std::string &parameter_filename);
 
-    static void
-    declare_parameters(ParameterHandler &prm);
+    void
+    add_parameters(ParameterHandler &prm);
 
     void
     parse_parameters(const std::string parameter_filename, ParameterHandler &prm);
 
     void
-    parse_parameters(ParameterHandler &prm);
+    post();
 
     void
     check_for_file(const std::string &parameter_filename, ParameterHandler &prm) const;
 
-    unsigned int dimension;
-    unsigned int global_refinements;
-    unsigned int adaptive_refinements;
-    bool         use_anisotropic_refinement;
-    bool         use_simplex_mesh;
+    unsigned int dimension                  = 2;
+    unsigned int global_refinements         = 1;
+    unsigned int adaptive_refinements       = 0;
+    bool         use_anisotropic_refinement = false;
+    bool         use_simplex_mesh           = false;
 
     enum PhysicalType
     {
@@ -63,15 +64,15 @@ namespace adaflo
     std::map<std::string, double> get_beta_formulation_convective_term_momentum_balance =
       {{"conservative", 1.0}, {"convective", 0.0}, {"skew-symmetric", 0.5}};
 
-    double       beta_convective_term_momentum_balance;
-    unsigned int velocity_degree;
-    bool         augmented_taylor_hood;
-    double       viscosity;
-    double       density;
-    double       damping;
-    double       tau_grad_div;
-    unsigned int max_nl_iteration;
-    double       tol_nl_iteration;
+    double       beta_convective_term_momentum_balance = 0.5;
+    unsigned int velocity_degree                       = 2;
+    bool         augmented_taylor_hood                 = false;
+    double       viscosity                             = 1;
+    double       density                               = 1;
+    double       damping                               = 0.0;
+    double       tau_grad_div                          = 0;
+    unsigned int max_nl_iteration                      = 10;
+    double       tol_nl_iteration                      = 1e-6;
     enum Linearization
     {
       coupled_implicit_newton,
@@ -81,9 +82,9 @@ namespace adaflo
       projection
     } linearization;
 
-    unsigned int max_lin_iteration;
-    double       tol_lin_iteration;
-    bool         rel_lin_iteration;
+    unsigned int max_lin_iteration = 500;
+    double       tol_lin_iteration = 1e-3;
+    bool         rel_lin_iteration = true;
     enum PreconditionVelocity
     {
       u_ilu,
@@ -96,47 +97,48 @@ namespace adaflo
       p_mass_diag,
       p_mass_ilu
     } precondition_pressure;
-    unsigned int iterations_before_inner_solvers;
+    unsigned int iterations_before_inner_solvers = 50;
 
-    std::string  output_filename;
-    unsigned int output_verbosity;
-    double       output_frequency;
-    unsigned int print_solution_fields;
-    bool         output_wall_times;
-    bool         output_memory;
+    std::string  output_filename       = "";
+    unsigned int output_verbosity      = 2;
+    double       output_frequency      = 1;
+    unsigned int print_solution_fields = 0;
+    bool         output_wall_times     = false;
+    bool         output_memory         = false;
 
-    TimeSteppingParameters::Scheme time_step_scheme;
-    double                         start_time;
-    double                         end_time;
-    double                         time_step_size_start;
-    double                         time_stepping_cfl;
-    double                         time_stepping_coef2;
-    double                         time_step_tolerance;
-    double                         time_step_size_max;
-    double                         time_step_size_min;
+    TimeSteppingParameters::Scheme time_step_scheme =
+      TimeSteppingParameters::Scheme::bdf_2;
+    double start_time           = 0;
+    double end_time             = 1;
+    double time_step_size_start = 1e-2;
+    double time_stepping_cfl    = 0.8;
+    double time_stepping_coef2  = 10;
+    double time_step_tolerance  = 1e-2;
+    double time_step_size_max   = 1.0;
+    double time_step_size_min   = 0.1;
 
     // Two-phase specific parameters
-    double density_diff;
-    double viscosity_diff;
+    double density_diff   = 0;
+    double viscosity_diff = 0;
 
-    double surface_tension;
-    double gravity;
-    double epsilon;
-    double diffusion_length; // only useful in Cahn-Hilliard
-    double contact_angle;    // only useful in Cahn-Hilliard
+    double surface_tension  = 1;
+    double gravity          = 0;
+    double epsilon          = 1;
+    double diffusion_length = 0.1; // only useful in Cahn-Hilliard
+    double contact_angle    = 0;   // only useful in Cahn-Hilliard
 
-    bool pressure_constraint;
+    bool pressure_constraint = true;
 
-    unsigned int concentration_subdivisions;
-    unsigned int curvature_correction;           // only for level set
-    bool         interpolate_grad_onto_pressure; // only for level set
-    bool         surface_tension_from_heaviside; // only for level set
-    bool         approximate_projections;        // only for level set
-    bool         ch_do_newton;                   // only for Cahn-Hilliard
-    bool         do_iteration;                   // only for Cahn-Hilliard
-    unsigned int n_reinit_steps;                 // only for level set
-    unsigned int n_initial_reinit_steps;         // only for level set
-    bool         convection_stabilization;
+    unsigned int concentration_subdivisions     = 2;
+    unsigned int curvature_correction           = 0;     // only for level set
+    bool         interpolate_grad_onto_pressure = false; // only for level set
+    bool         surface_tension_from_heaviside = true;  // only for level set
+    bool         approximate_projections        = false; // only for level set
+    bool         ch_do_newton                   = true;  // only for Cahn-Hilliard
+    bool         do_iteration                   = false; // only for Cahn-Hilliard
+    unsigned int n_reinit_steps                 = 2;     // only for level set
+    unsigned int n_initial_reinit_steps         = 0;     // only for level set
+    bool         convection_stabilization       = false;
 
     enum ConstitutiveType
     {
@@ -144,6 +146,36 @@ namespace adaflo
       newtonian_incompressible,
       user_defined
     } constitutive_type;
+
+  private:
+    // for parameter parsing only
+    double      two_phase_density                            = -1;
+    double      two_phase_viscosity                          = -1;
+    std::string physical_type_str                            = "incompressible";
+    std::string constitutive_type_str                        = "newtonian incompressible";
+    std::string formulation_convective_term_momentum_balance = "skew-symmetric";
+    std::string linearization_str                            = "coupled implicit Newton";
+    std::string uprec                                        = "amg linear";
+    std::string pprec                                        = "ilu";
+    std::string time_step_scheme_str                         = "bdf2";
+
+    // temporary values for boolean variables
+    struct BooleanVariables
+    {
+      int use_anisotropic_refinement     = false;
+      int use_simplex_mesh               = false;
+      int augmented_taylor_hood          = false;
+      int rel_lin_iteration              = true;
+      int pressure_constraint            = true;
+      int output_wall_times              = false;
+      int output_memory                  = false;
+      int interpolate_grad_onto_pressure = false; 
+      int surface_tension_from_heaviside = true;  
+      int approximate_projections        = false; 
+      int ch_do_newton                   = true;  
+      int do_iteration                   = false; 
+      int convection_stabilization       = false;
+    } to_bool;
   };
 } // namespace adaflo
 

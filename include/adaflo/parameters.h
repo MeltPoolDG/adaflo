@@ -157,24 +157,24 @@ namespace adaflo
     std::string linearization_str                            = "coupled implicit Newton";
     std::string uprec                                        = "amg linear";
     std::string pprec                                        = "ilu";
-    std::string time_step_scheme_str                         = "bdf2";
+    std::string time_step_scheme_str                         = "bdf_2";
 
     // temporary values for boolean variables
     struct BooleanVariables
     {
-      int use_anisotropic_refinement     = false;
-      int use_simplex_mesh               = false;
-      int augmented_taylor_hood          = false;
-      int rel_lin_iteration              = true;
-      int pressure_constraint            = true;
-      int output_wall_times              = false;
-      int output_memory                  = false;
-      int interpolate_grad_onto_pressure = false; 
-      int surface_tension_from_heaviside = true;  
-      int approximate_projections        = false; 
-      int ch_do_newton                   = true;  
-      int do_iteration                   = false; 
-      int convection_stabilization       = false;
+      int use_anisotropic_refinement     = 0;
+      int use_simplex_mesh               = 0;
+      int augmented_taylor_hood          = 0;
+      int rel_lin_iteration              = 1;
+      int pressure_constraint            = 1;
+      int output_wall_times              = 0;
+      int output_memory                  = 0;
+      int interpolate_grad_onto_pressure = 0;
+      int surface_tension_from_heaviside = 1;
+      int approximate_projections        = 0;
+      int ch_do_newton                   = 1;
+      int do_iteration                   = 0;
+      int convection_stabilization       = 0;
     } to_bool;
   };
 } // namespace adaflo

@@ -209,13 +209,11 @@ adaflo::NavierStokes<dim>::distribute_dofs()
     DoFRenumbering::Cuthill_McKee(dof_handler_u, false, false);
 
   IndexSet relevant_dofs_p = DoFTools::extract_locally_relevant_dofs(dof_handler_p);
-  IndexSet owned_dofs_p    = dof_handler_p.locally_owned_dofs();
-  hanging_node_constraints_p.reinit(owned_dofs_p, relevant_dofs_p);
-  constraints_p.reinit(owned_dofs_p, relevant_dofs_p);
+  hanging_node_constraints_p.reinit(dof_handler_p.locally_owned_dofs(), relevant_dofs_p);
+  constraints_p.reinit(dof_handler_p.locally_owned_dofs(), relevant_dofs_p);
   IndexSet relevant_dofs_u = DoFTools::extract_locally_relevant_dofs(dof_handler_u);
-  IndexSet owned_dofs_u    = dof_handler_u.locally_owned_dofs();
-  hanging_node_constraints_u.reinit(owned_dofs_u, relevant_dofs_u);
-  constraints_u.reinit(owned_dofs_u, relevant_dofs_u);
+  hanging_node_constraints_u.reinit(dof_handler_u.locally_owned_dofs(), relevant_dofs_u);
+  constraints_u.reinit(dof_handler_u.locally_owned_dofs(), relevant_dofs_u);
 
   dofs_distributed = true;
   system_is_setup  = false;
@@ -1374,12 +1372,21 @@ template <int dim>
 void
 adaflo::NavierStokes<dim>::prepare_coarsening_and_refinement()
 {
+<<<<<<< HEAD
   sol_trans_u = std::make_shared<
     dealii::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
     dof_handler_u);
   sol_trans_p = std::make_shared<
     dealii::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
     dof_handler_p);
+=======
+  sol_trans_u =
+    std::make_shared<SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
+      dof_handler_u);
+  sol_trans_p =
+    std::make_shared<SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
+      dof_handler_p);
+>>>>>>> 9bbc5a6 (fix warnings due to dealii release)
 
   hanging_node_constraints_u.distribute(solution.block(0));
   hanging_node_constraints_u.distribute(solution_old.block(0));

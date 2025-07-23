@@ -83,9 +83,10 @@ adaflo::NavierStokes<dim>::NavierStokes(
   , solution_update(2)
   , time_stepping(parameters)
   , parameters(parameters)
-  , n_mpi_processes(Utilities::MPI::n_mpi_processes(triangulation_in.get_communicator()))
+  , n_mpi_processes(
+      Utilities::MPI::n_mpi_processes(triangulation_in.get_mpi_communicator()))
   , this_mpi_process(
-      Utilities::MPI::this_mpi_process(triangulation_in.get_communicator()))
+      Utilities::MPI::this_mpi_process(triangulation_in.get_mpi_communicator()))
   , pcout(std::cout, this_mpi_process == 0)
   , triangulation(triangulation_in)
   , fe_u(parameters.use_simplex_mesh ?
@@ -169,8 +170,9 @@ void
 adaflo::NavierStokes<dim>::print_n_dofs() const
 {
   std::pair<unsigned int, unsigned int> n_dofs = this->n_dofs();
-  const double min_cell_diameter = -Utilities::MPI::max(-triangulation.last()->diameter(),
-                                                        triangulation.get_communicator());
+  const double                          min_cell_diameter =
+    -Utilities::MPI::max(-triangulation.last()->diameter(),
+                         triangulation.get_mpi_communicator());
 
   pcout << " Number of active cells: " << triangulation.n_global_active_cells() << "."
         << std::endl
@@ -206,13 +208,12 @@ adaflo::NavierStokes<dim>::distribute_dofs()
   if (parameters.precondition_velocity == FlowParameters::u_ilu)
     DoFRenumbering::Cuthill_McKee(dof_handler_u, false, false);
 
-  IndexSet relevant_dofs_p, relevant_dofs_u;
-  DoFTools::extract_locally_relevant_dofs(dof_handler_p, relevant_dofs_p);
-  hanging_node_constraints_p.reinit(relevant_dofs_p);
-  constraints_p.reinit(relevant_dofs_p);
-  DoFTools::extract_locally_relevant_dofs(dof_handler_u, relevant_dofs_u);
-  hanging_node_constraints_u.reinit(relevant_dofs_u);
-  constraints_u.reinit(relevant_dofs_u);
+  IndexSet relevant_dofs_p = DoFTools::extract_locally_relevant_dofs(dof_handler_p);
+  hanging_node_constraints_p.reinit(dof_handler_p.locally_owned_dofs(), relevant_dofs_p);
+  constraints_p.reinit(dof_handler_p.locally_owned_dofs(), relevant_dofs_p);
+  IndexSet relevant_dofs_u = DoFTools::extract_locally_relevant_dofs(dof_handler_u);
+  hanging_node_constraints_u.reinit(dof_handler_u.locally_owned_dofs(), relevant_dofs_u);
+  constraints_u.reinit(dof_handler_u.locally_owned_dofs(), relevant_dofs_u);
 
   dofs_distributed = true;
   system_is_setup  = false;
@@ -419,7 +420,7 @@ adaflo::NavierStokes<dim>::initialize_matrix_free(MatrixFree<dim>   *external_ma
       // processor
       data.mapping_update_flags = data.mapping_update_flags | update_quadrature_points;
       data.tasks_parallel_scheme =
-        Utilities::MPI::n_mpi_processes(triangulation.get_communicator()) > 1 ?
+        Utilities::MPI::n_mpi_processes(triangulation.get_mpi_communicator()) > 1 ?
           MatrixFree<dim>::AdditionalData::none :
           MatrixFree<dim>::AdditionalData::partition_color;
       if (parameters.velocity_degree == 2)
@@ -1027,14 +1028,14 @@ adaflo::NavierStokes<dim>::solve_nonlinear_system(const double initial_residual)
     end_loop:
 
       const long int min_index =
-        -Utilities::MPI::max(-distance.first, triangulation.get_communicator());
+        -Utilities::MPI::max(-distance.first, triangulation.get_mpi_communicator());
       AssertThrow(min_index != std::numeric_limits<long int>::max(),
                   ExcMessage("Could not find a boundary point for fixing the pressure"));
       const double local_value =
         (distance.first == min_index ? distance.second :
                                        -std::numeric_limits<double>::max());
       const double shift =
-        Utilities::MPI::max(local_value, triangulation.get_communicator());
+        Utilities::MPI::max(local_value, triangulation.get_mpi_communicator());
       navier_stokes_matrix.apply_pressure_shift(shift, solution.block(1));
       hanging_node_constraints_p.distribute(solution.block(1));
       solution.block(1).update_ghost_values();
@@ -1085,7 +1086,8 @@ adaflo::NavierStokes<dim>::solve_nonlinear_system(const double initial_residual)
       Utilities::System::MemoryStats stats;
       Utilities::System::get_memory_stats(stats);
       Utilities::MPI::MinMaxAvg memory =
-        Utilities::MPI::min_max_avg(stats.VmRSS / 1024, triangulation.get_communicator());
+        Utilities::MPI::min_max_avg(stats.VmRSS / 1024,
+                                    triangulation.get_mpi_communicator());
       pcout << "-- Statistics -- memory [MB] : " << std::fixed << std::setprecision(0)
             << std::right << std::setw(8) << memory.min << " " << std::setprecision(0)
             << std::right << std::setw(8) << memory.avg << " " << std::setprecision(0)
@@ -1096,7 +1098,7 @@ adaflo::NavierStokes<dim>::solve_nonlinear_system(const double initial_residual)
       std::cout.unsetf(std::ios_base::floatfield);
 
       memory = Utilities::MPI::min_max_avg(solver_timers[1].second,
-                                           triangulation.get_communicator());
+                                           triangulation.get_mpi_communicator());
       pcout << "-- Statistics -- nln solver  : " << std::setprecision(3) << std::right
             << std::setw(8) << memory.min << " " << std::setprecision(3) << std::right
             << std::setw(8) << memory.avg << " " << std::setprecision(3) << std::right
@@ -1107,7 +1109,7 @@ adaflo::NavierStokes<dim>::solve_nonlinear_system(const double initial_residual)
       solver_timers[1] = std::pair<unsigned int, double>();
 
       memory = Utilities::MPI::min_max_avg(solver_timers[0].second,
-                                           triangulation.get_communicator());
+                                           triangulation.get_mpi_communicator());
       pcout << "-- Statistics --  lin solver : " << std::setprecision(3) << std::right
             << std::setw(8) << memory.min << " " << std::setprecision(3) << std::right
             << std::setw(8) << memory.avg << " " << std::setprecision(3) << std::right
@@ -1329,7 +1331,7 @@ adaflo::NavierStokes<dim>::refine_grid_pressure_based(
   LinearAlgebra::distributed::Vector<double> pressure_extended(
     dof_handler_p.locally_owned_dofs(),
     constraints_p.get_local_lines(),
-    triangulation.get_communicator());
+    triangulation.get_mpi_communicator());
   pressure_extended = solution.block(1);
   pressure_extended.update_ghost_values();
   Vector<float> estimated_error_per_cell(triangulation.n_active_cells());
@@ -1371,12 +1373,10 @@ void
 adaflo::NavierStokes<dim>::prepare_coarsening_and_refinement()
 {
   sol_trans_u =
-    std::make_shared<parallel::distributed::
-                       SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
+    std::make_shared<SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
       dof_handler_u);
   sol_trans_p =
-    std::make_shared<parallel::distributed::
-                       SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
+    std::make_shared<SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
       dof_handler_p);
 
   hanging_node_constraints_u.distribute(solution.block(0));
@@ -1417,10 +1417,9 @@ adaflo::NavierStokes<dim>::interpolate_pressure_field(
   if (parameters.augmented_taylor_hood)
     {
       // set DG0 components to zero
-      std::vector<std::vector<bool>> constant_modes;
-      DoFTools::extract_constant_modes(dof_handler_p,
-                                       ComponentMask(std::vector<bool>(1, true)),
-                                       constant_modes);
+      std::vector<std::vector<bool>> constant_modes =
+        DoFTools::extract_constant_modes(dof_handler_p,
+                                         ComponentMask(std::vector<bool>(1, true)));
       AssertDimension(constant_modes.size(), 2);
       for (unsigned int i = 0; i < pressure_vector.locally_owned_size(); ++i)
         if (constant_modes[1][i])

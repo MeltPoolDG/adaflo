@@ -86,7 +86,7 @@ adaflo::LevelSetOKZMatrixSolver<dim>::initialize_data_structures()
   DoFTools::make_sparsity_pattern(this->dof_handler, dsp, this->constraints, true);
   system_matrix.reinit(this->dof_handler.locally_owned_dofs(),
                        dsp,
-                       this->triangulation.get_communicator(),
+                       this->triangulation.get_mpi_communicator(),
                        true);
 }
 

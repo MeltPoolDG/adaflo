@@ -255,7 +255,7 @@ namespace adaflo
     /* MPI_Comm mpi_communicator;
      * probably won't need an extra copy of MPI_Comm in the
      * NavierStokes class as one can always get the communicator
-     * easily by triangulation.get_communicator()
+     * easily by triangulation.get_mpi_communicator()
      */
 
     const unsigned int n_mpi_processes;
@@ -280,11 +280,9 @@ namespace adaflo
     NavierStokesMatrix<dim>                         navier_stokes_matrix;
     LinearAlgebra::distributed::BlockVector<double> system_rhs, const_rhs;
 
-    std::shared_ptr<parallel::distributed::
-                      SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>
+    std::shared_ptr<SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>
       sol_trans_u;
-    std::shared_ptr<parallel::distributed::
-                      SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>
+    std::shared_ptr<SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>
       sol_trans_p;
 
     NavierStokesPreconditioner<dim> preconditioner;

@@ -251,7 +251,7 @@ adaflo::PhaseFieldSolver<dim>::create_cahn_hilliard_preconditioner()
       TrilinosWrappers::SparsityPattern csp(this->dof_handler.locally_owned_dofs(),
                                             this->dof_handler.locally_owned_dofs(),
                                             relevant_dofs,
-                                            this->triangulation.get_communicator());
+                                            this->triangulation.get_mpi_communicator());
       DoFTools::make_sparsity_pattern(this->dof_handler, csp);
       csp.compress();
       preconditioner_matrix.reinit(csp);
@@ -518,7 +518,7 @@ adaflo::PhaseFieldSolver<dim>::mark_cells_for_refinement()
       }
   const bool global_must_refine =
     Utilities::MPI::max(static_cast<unsigned int>(must_refine),
-                        this->triangulation.get_communicator());
+                        this->triangulation.get_mpi_communicator());
   this->timer->leave_subsection();
   return global_must_refine;
 }

@@ -1048,7 +1048,8 @@ adaflo::NavierStokesPreconditioner<dim>::initialize_matrices(
       DoFRenumbering::Cuthill_McKee(dof_handler_u_scalar, false, true);
       IndexSet relevant_dofs_u =
         DoFTools::extract_locally_relevant_dofs(dof_handler_u_scalar);
-      constraints_u_scalar.reinit(relevant_dofs_u);
+      constraints_u_scalar.reinit(dof_handler_u_scalar.locally_owned_dofs(),
+                                  relevant_dofs_u);
       DoFTools::make_hanging_node_constraints(dof_handler_u_scalar, constraints_u_scalar);
 
       for (unsigned int d = 0; d < dim; ++d)
@@ -1085,7 +1086,8 @@ adaflo::NavierStokesPreconditioner<dim>::initialize_matrices(
 
   // Build constraints for the Schur complement
   constraints_schur_complement.clear();
-  constraints_schur_complement.reinit(constraints_p.get_local_lines());
+  constraints_schur_complement.reinit(dof_handler_p.locally_owned_dofs(),
+                                      constraints_p.get_local_lines());
   constraints_schur_complement.merge(constraints_p);
 
   // On open boundaries, the pressure Laplace matrix for the preconditioner
@@ -1154,10 +1156,9 @@ adaflo::NavierStokesPreconditioner<dim>::initialize_matrices(
 
   if (parameters.augmented_taylor_hood)
     {
-      std::vector<std::vector<bool>> constant_modes;
-      DoFTools::extract_constant_modes(dof_handler_p,
-                                       ComponentMask(std::vector<bool>(1, true)),
-                                       constant_modes);
+      std::vector<std::vector<bool>> constant_modes =
+        DoFTools::extract_constant_modes(dof_handler_p,
+                                         ComponentMask(std::vector<bool>(1, true)));
       AssertDimension(constant_modes.size(), 2);
       int min_local_index = std::numeric_limits<int>::min();
       for (unsigned int i = 0; i < constant_modes[1].size(); ++i)
@@ -1390,15 +1391,14 @@ adaflo::NavierStokesPreconditioner<dim>::initialize_matrices(
 
   if (parameters.precondition_velocity == FlowParameters::u_amg ||
       parameters.precondition_velocity == FlowParameters::u_amg_linear)
-    DoFTools::extract_constant_modes(dof_handler_u,
-                                     ComponentMask(std::vector<bool>(dim, true)),
-                                     constant_modes_u);
+    constant_modes_u =
+      DoFTools::extract_constant_modes(dof_handler_u,
+                                       ComponentMask(std::vector<bool>(dim, true)));
 
   if (parameters.density > 0 || parameters.augmented_taylor_hood)
-    DoFTools::extract_constant_modes(dof_handler_p,
-                                     ComponentMask(std::vector<bool>(1, true)),
-                                     constant_modes_p);
-
+    constant_modes_p =
+      DoFTools::extract_constant_modes(dof_handler_p,
+                                       ComponentMask(std::vector<bool>(1, true)));
 
   if (parameters.augmented_taylor_hood && parameters.density_diff != 0.)
     {

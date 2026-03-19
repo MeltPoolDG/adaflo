@@ -169,7 +169,7 @@ MicroFluidicProblem<dim>::run()
       solution_data.push_back(solver->compute_bubble_statistics());
 
       if (solution_data.size() > 0 &&
-          Utilities::MPI::this_mpi_process(triangulation.get_communicator()) == 0 &&
+          Utilities::MPI::this_mpi_process(triangulation.get_mpi_communicator()) == 0 &&
           solver->get_time_stepping().at_tick(parameters.output_frequency))
         {
           const int time_step = 1.000001e4 * solver->get_time_stepping().step_size();

@@ -64,8 +64,8 @@ public:
     , fluctuating(fluctuating)
   {}
 
-  virtual void
-  vector_value(const Point<dim> &p, Vector<double> &values) const;
+  void
+  vector_value(const Point<dim> &p, Vector<double> &values) const override;
 
 private:
   const bool fluctuating;

@@ -128,8 +128,8 @@ public:
     , nu(viscosity)
   {}
 
-  virtual double
-  value(const Point<dim> &p, const unsigned int component) const;
+  double
+  value(const Point<dim> &p, const unsigned int component) const override;
 
 private:
   const double nu;

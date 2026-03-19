@@ -128,7 +128,7 @@ MicroFluidicProblem<dim>::evaluate_spurious_velocities()
   const unsigned int   n_q_points = quadrature_formula.size();
 
   const NavierStokes<dim> &navier_stokes    = solver->get_navier_stokes();
-  const MPI_Comm          &mpi_communicator = triangulation.get_communicator();
+  const MPI_Comm          &mpi_communicator = triangulation.get_mpi_communicator();
   FEValues<dim> fe_values(navier_stokes.get_fe_u(), quadrature_formula, update_values);
   std::vector<Tensor<1, dim>> velocity_values(n_q_points);
   local_norm_velocity = 0;
@@ -256,7 +256,7 @@ MicroFluidicProblem<dim>::run()
       evaluate_spurious_velocities();
 
       if (solution_data.size() > 0 &&
-          Utilities::MPI::this_mpi_process(triangulation.get_communicator()) == 0 &&
+          Utilities::MPI::this_mpi_process(triangulation.get_mpi_communicator()) == 0 &&
           solver->get_time_stepping().at_tick(parameters.output_frequency))
         {
           const int time_step = 1.000001e4 * solver->get_time_stepping().step_size();

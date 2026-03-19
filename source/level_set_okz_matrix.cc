@@ -78,15 +78,15 @@ adaflo::LevelSetOKZMatrixSolver<dim>::initialize_data_structures()
 
   normal_calculated = false;
 
-  IndexSet locally_relevant_dofs(this->dof_handler.n_dofs());
-  DoFTools::extract_locally_relevant_dofs(this->dof_handler, locally_relevant_dofs);
+  IndexSet locally_relevant_dofs =
+    DoFTools::extract_locally_relevant_dofs(this->dof_handler);
   DynamicSparsityPattern dsp(this->dof_handler.n_dofs(),
                              this->dof_handler.n_dofs(),
                              locally_relevant_dofs);
   DoFTools::make_sparsity_pattern(this->dof_handler, dsp, this->constraints, true);
   system_matrix.reinit(this->dof_handler.locally_owned_dofs(),
                        dsp,
-                       this->triangulation.get_communicator(),
+                       this->triangulation.get_mpi_communicator(),
                        true);
 }
 

@@ -75,7 +75,8 @@ adaflo::TwoPhaseBaseAlgorithm<dim>::TwoPhaseBaseAlgorithm(
   , solution(2)
   , solution_old(2)
   , solution_old_old(2)
-  , pcout(std::cout, Utilities::MPI::this_mpi_process(tria_in.get_communicator()) == 0)
+  , pcout(std::cout,
+          Utilities::MPI::this_mpi_process(tria_in.get_mpi_communicator()) == 0)
   , timer((timer_in == 0 ?
              new TimerOutput(pcout,
                              parameters_in.output_wall_times ? TimerOutput::summary :
@@ -209,12 +210,12 @@ adaflo::TwoPhaseBaseAlgorithm<dim>::distribute_dofs()
   navier_stokes.distribute_dofs();
   dof_handler.distribute_dofs(*fe);
 
-  IndexSet relevant_dofs;
-  DoFTools::extract_locally_relevant_dofs(dof_handler, relevant_dofs);
-  constraints.reinit(relevant_dofs);
-  constraints_curvature.reinit(relevant_dofs);
-  hanging_node_constraints.reinit(relevant_dofs);
-  constraints_normals.reinit(relevant_dofs);
+  IndexSet relevant_dofs = DoFTools::extract_locally_relevant_dofs(dof_handler);
+  IndexSet owned_dofs    = dof_handler.locally_owned_dofs();
+  constraints.reinit(owned_dofs, relevant_dofs);
+  constraints_curvature.reinit(owned_dofs, relevant_dofs);
+  hanging_node_constraints.reinit(owned_dofs, relevant_dofs);
+  constraints_normals.reinit(owned_dofs, relevant_dofs);
 
   DoFTools::make_hanging_node_constraints(dof_handler, hanging_node_constraints);
   constraints.merge(hanging_node_constraints);
@@ -383,7 +384,7 @@ adaflo::TwoPhaseBaseAlgorithm<dim>::mark_cells_for_refinement()
       }
   const bool global_must_refine =
     Utilities::MPI::max(static_cast<unsigned int>(must_refine),
-                        triangulation.get_communicator());
+                        triangulation.get_mpi_communicator());
   timer->leave_subsection();
   return global_must_refine;
 }
@@ -409,8 +410,7 @@ adaflo::TwoPhaseBaseAlgorithm<dim>::refine_grid()
 
   navier_stokes.prepare_coarsening_and_refinement();
 
-  parallel::distributed::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>
-    soltrans(dof_handler);
+  SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>> soltrans(dof_handler);
   soltrans.prepare_for_coarsening_and_refinement(old_grid_solutions);
 
   triangulation.execute_coarsening_and_refinement();
@@ -505,7 +505,7 @@ adaflo::TwoPhaseBaseAlgorithm<dim>::get_maximal_velocity() const
           max_velocity = std::max(max_velocity, velocity_values[q].norm());
       }
 
-  return Utilities::MPI::max(max_velocity, triangulation.get_communicator());
+  return Utilities::MPI::max(max_velocity, triangulation.get_mpi_communicator());
 }
 
 
@@ -539,8 +539,8 @@ adaflo::TwoPhaseBaseAlgorithm<dim>::get_concentration_range() const
           }
       }
   last_concentration_range = std::make_pair(
-    -Utilities::MPI::max(-min_concentration, triangulation.get_communicator()),
-    Utilities::MPI::max(max_concentration, triangulation.get_communicator()));
+    -Utilities::MPI::max(-min_concentration, triangulation.get_mpi_communicator()),
+    Utilities::MPI::max(max_concentration, triangulation.get_mpi_communicator()));
   return last_concentration_range;
 }
 
@@ -846,7 +846,7 @@ adaflo::TwoPhaseBaseAlgorithm<2>::compute_bubble_statistics(
           }
       }
 
-  const MPI_Comm mpi_communicator = triangulation.get_communicator();
+  const MPI_Comm mpi_communicator = triangulation.get_mpi_communicator();
 
   const double global_area      = Utilities::MPI::sum(area, mpi_communicator);
   const double global_perimeter = Utilities::MPI::sum(perimeter, mpi_communicator);
@@ -1033,7 +1033,7 @@ adaflo::TwoPhaseBaseAlgorithm<3>::compute_bubble_statistics(std::vector<Tensor<2
           }
       }
 
-  const MPI_Comm mpi_communicator = triangulation.get_communicator();
+  const MPI_Comm mpi_communicator = triangulation.get_mpi_communicator();
 
   Tensor<1, dim> global_mass_center;
   Tensor<1, dim> global_velocity;

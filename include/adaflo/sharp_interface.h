@@ -221,7 +221,7 @@ namespace adaflo
         typename MatrixFree<dim>::AdditionalData data;
 
         data.tasks_parallel_scheme =
-          Utilities::MPI::n_mpi_processes(dof_handler.get_communicator()) > 1 ?
+          Utilities::MPI::n_mpi_processes(dof_handler.get_mpi_communicator()) > 1 ?
             MatrixFree<dim>::AdditionalData::none :
             MatrixFree<dim>::AdditionalData::partition_color;
         if (parameters.velocity_degree == 2)

@@ -114,9 +114,9 @@ namespace adaflo
         cell_diameters[cell] = diameter;
       }
     cell_diameter_min =
-      -Utilities::MPI::max(-cell_diameter_min, triangulation.get_communicator());
+      -Utilities::MPI::max(-cell_diameter_min, triangulation.get_mpi_communicator());
     cell_diameter_max =
-      Utilities::MPI::max(cell_diameter_max, triangulation.get_communicator());
+      Utilities::MPI::max(cell_diameter_max, triangulation.get_mpi_communicator());
   }
 
   /**

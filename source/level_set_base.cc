@@ -362,7 +362,7 @@ adaflo::LevelSetBaseAlgorithm<dim>::mark_cells_for_refinement()
 
   unsigned int do_refine =
     Utilities::MPI::max(static_cast<unsigned int>(needs_refinement_or_coarsening),
-                        this->triangulation.get_communicator());
+                        this->triangulation.get_mpi_communicator());
 
   if (!do_refine)
     return false;
@@ -485,13 +485,12 @@ adaflo::LevelSetBaseAlgorithm<dim>::output_solution(
 
   LinearAlgebra::distributed::Vector<double> joint_solution;
   {
-    IndexSet locally_relevant_joint_dofs(joint_dof_handler.n_dofs());
-    DoFTools::extract_locally_relevant_dofs(joint_dof_handler,
-                                            locally_relevant_joint_dofs);
+    IndexSet locally_relevant_joint_dofs =
+      DoFTools::extract_locally_relevant_dofs(joint_dof_handler);
 
     joint_solution.reinit(joint_dof_handler.locally_owned_dofs(),
                           locally_relevant_joint_dofs,
-                          this->triangulation.get_communicator());
+                          this->triangulation.get_mpi_communicator());
   }
 
 

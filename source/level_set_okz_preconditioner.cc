@@ -95,13 +95,12 @@ adaflo::initialize_projection_matrix(
         }
   }
   {
-    IndexSet relevant_dofs;
-    DoFTools::extract_locally_relevant_dofs(dof_handler, relevant_dofs);
+    IndexSet relevant_dofs = DoFTools::extract_locally_relevant_dofs(dof_handler);
     TrilinosWrappers::SparsityPattern csp;
     csp.reinit(dof_handler.locally_owned_dofs(),
                dof_handler.locally_owned_dofs(),
                relevant_dofs,
-               dof_handler.get_communicator());
+               dof_handler.get_mpi_communicator());
     std::vector<types::global_dof_index> local_dof_indices(fe.dofs_per_cell);
 
     for (const auto &cell : dof_handler.active_cell_iterators())

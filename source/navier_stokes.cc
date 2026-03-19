@@ -1372,21 +1372,12 @@ template <int dim>
 void
 adaflo::NavierStokes<dim>::prepare_coarsening_and_refinement()
 {
-<<<<<<< HEAD
-  sol_trans_u = std::make_shared<
-    dealii::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
-    dof_handler_u);
-  sol_trans_p = std::make_shared<
-    dealii::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
-    dof_handler_p);
-=======
   sol_trans_u =
     std::make_shared<SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
       dof_handler_u);
   sol_trans_p =
     std::make_shared<SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>>(
       dof_handler_p);
->>>>>>> 9bbc5a6 (fix warnings due to dealii release)
 
   hanging_node_constraints_u.distribute(solution.block(0));
   hanging_node_constraints_u.distribute(solution_old.block(0));

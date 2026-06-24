@@ -27,8 +27,8 @@ subsection Two phase
   set epsilon              = 1.5
   set gravity              = 0.98
   set concentration subdivisions = 4
-  set grad pressure compatible = 1
-  set localize surface tension = 1
+  set grad pressure compatible = true
+  set localize surface tension = true
   set curvature correction = 1
   set number reinit steps = 2
   set number initial reinit steps = 2
@@ -43,7 +43,7 @@ subsection Navier-Stokes
   set global refinements   = 1
   set adaptive refinements = 2
   set velocity degree      = 2
-  set augmented Taylor-Hood elements = 1
+  set augmented Taylor-Hood elements = true
   subsection Solver
     set NL max iterations            = 10
     set NL tolerance                 = 1.e-9

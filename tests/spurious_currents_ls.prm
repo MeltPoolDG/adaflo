@@ -26,8 +26,8 @@ subsection Two phase
   set epsilon              = 1.5
   set gravity              = 0.
   set concentration subdivisions = 3
-  set grad pressure compatible = 1
-  set localize surface tension = 1
+  set grad pressure compatible = true
+  set localize surface tension = true
   set curvature correction = 1
   set number reinit steps = 2
   set number initial reinit steps = 0

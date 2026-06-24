@@ -30,7 +30,7 @@ subsection Navier-Stokes
     set NL tolerance                 = 1.e-12
     set lin max iterations           = 50
     set lin tolerance                = 1.e-5
-    set lin relative tolerance       = 1
+    set lin relative tolerance       = true
     set lin velocity preconditioner  = amg
     set lin its before inner solvers = 50
   end

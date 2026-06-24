@@ -23,8 +23,8 @@ subsection Two phase
   set gravity              = 0.
   set diffusion length     = 0.06
   set contact angle        = 0.766
-  set pressure constraint  = 0
-  set Cahn-Hilliard do Newton = 1
+  set pressure constraint  = false
+  set Cahn-Hilliard do Newton = true
   set concentration subdivisions = 1
 end
 subsection Time stepping
@@ -44,7 +44,7 @@ subsection Navier-Stokes
     set NL tolerance                 = 1.e-10
     set lin max iterations           = 50
     set lin tolerance                = 1.e-4
-    set lin relative tolerance       = 1
+    set lin relative tolerance       = true
     set lin velocity preconditioner  = amg linear
     set lin its before inner solvers = 50
   end

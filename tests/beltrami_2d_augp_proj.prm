@@ -23,7 +23,7 @@ subsection Navier-Stokes
   set dimension          = 2
   set global refinements = 4
   set velocity degree    = 2
-  set augmented Taylor-Hood elements = 1
+  set augmented Taylor-Hood elements = true
   set viscosity          = 1
   subsection Solver
     set linearization scheme         = projection

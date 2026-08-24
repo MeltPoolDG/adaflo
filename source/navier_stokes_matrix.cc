@@ -628,7 +628,7 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
   const vector_t tau1 = make_vectorized_array<double>(time_stepping->tau1());
   Assert(time_stepping->tau2() == 0., ExcNotImplemented());
 
-  velocity_stored *linearized =
+  velocity_stored *linearized [[maybe_unused]] =
     linearized_velocities.size() > 0 ?
       &linearized_velocities[cell_range.first * velocity.n_q_points] :
       0;
@@ -1136,7 +1136,7 @@ adaflo::NavierStokesMatrix<dim>::local_pressure_convdiff(
   Assert(linearized_velocities.size() > 0, ExcNotImplemented());
 
   const bool       use_variable_coefficients = variable_viscosities.size() > 0;
-  velocity_stored *linearized =
+  velocity_stored *linearized [[maybe_unused]] =
     &linearized_velocities[cell_range.first * pressure.n_q_points];
 
   for (unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)

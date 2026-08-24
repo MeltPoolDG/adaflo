@@ -55,7 +55,7 @@ namespace adaflo
   };
 
 
-  class TimeStepping : public Subscriptor
+  class TimeStepping : public EnableObserverPointer
   {
   public:
     TimeStepping(const FlowParameters &parameters);

@@ -421,6 +421,8 @@ adaflo::NavierStokes<dim>::initialize_matrix_free(MatrixFree<dim>   *external_ma
       // data), so do not allow parallelism in case we use more than one
       // processor
       data.mapping_update_flags = data.mapping_update_flags | update_quadrature_points;
+      if (parameters.stabilization_navier_stokes != FlowParameters::none)
+        data.mapping_update_flags = data.mapping_update_flags | update_hessians;
       data.tasks_parallel_scheme =
         Utilities::MPI::n_mpi_processes(triangulation.get_mpi_communicator()) > 1 ?
           MatrixFree<dim>::AdditionalData::none :

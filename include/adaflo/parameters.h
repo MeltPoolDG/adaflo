@@ -147,12 +147,12 @@ namespace adaflo
       user_defined
     } constitutive_type;
 
-    enum StabilizationNavierStokes
+    enum ConvectionStabilizationNavierStokes
     {
       none,
       supg,
       gls
-    } stabilization_navier_stokes;
+    } convection_stabilization_navier_stokes;
 
   private:
     // for parameter parsing only
@@ -162,7 +162,7 @@ namespace adaflo
     std::string constitutive_type_str                        = "newtonian incompressible";
     std::string formulation_convective_term_momentum_balance = "skew-symmetric";
     std::string linearization_str                            = "coupled implicit Newton";
-    std::string stabilization_navier_stokes_str              = "none";
+    std::string convection_stabilization_navier_stokes_str   = "none";
     std::string uprec                                        = "amg linear";
     std::string pprec                                        = "ilu";
     std::string time_step_scheme_str                         = "bdf_2";

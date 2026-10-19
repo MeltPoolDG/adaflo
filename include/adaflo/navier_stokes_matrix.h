@@ -57,6 +57,7 @@ namespace adaflo
     typedef std::pair<Tensor<1, dim, VectorizedArray<double>>,
                       Tensor<1, dim, VectorizedArray<double>>>
       stab_residual_stored;
+    typedef std::pair<VectorizedArray<double>, VectorizedArray<double>> stab_param_stored;
     NavierStokesMatrix(
       const FlowParameters                                  &parameters,
       const unsigned int                                    &dof_index_u,
@@ -183,7 +184,7 @@ namespace adaflo
     const stab_residual_stored *
     begin_stab_linearized_residuals(const unsigned int macro_cell) const;
 
-    const VectorizedArray<double> *
+    const stab_param_stored *
     begin_stab_param_values(const unsigned int macro_cell) const;
 
     bool
@@ -224,9 +225,10 @@ namespace adaflo
                     const VectorType                            &src,
                     const std::pair<unsigned int, unsigned int> &cell_range) const;
 
-    template <int degree_p, typename FEEval>
+    template <typename FEEval>
     void
-    compute_stabilization_parameter(FEEval &velocity, const unsigned int cell) const;
+    compute_stabilization_parameter(const FEEval      &velocity,
+                                    const unsigned int cell) const;
 
     template <int degree_p, bool weight_by_viscosity>
     void
@@ -296,10 +298,11 @@ namespace adaflo
     mutable AlignedVector<VectorizedArray<double>> variable_damping_coefficients;
     mutable AlignedVector<velocity_stored>         linearized_velocities;
 
-    mutable AlignedVector<stab_residual_stored>    stab_linearized_residuals;
-    mutable AlignedVector<VectorizedArray<double>> stab_param_values;
-    AlignedVector<VectorizedArray<double>>         cell_diameters;
-    bool                                           do_update_cell_diameters = true;
+    mutable AlignedVector<stab_residual_stored> stab_linearized_residuals;
+    mutable AlignedVector<stab_param_stored>    stab_param_values;
+    AlignedVector<VectorizedArray<double>>      cell_diameters;
+    VectorizedArray<double>                     p_squared;
+    bool                                        do_update_cell_diameters = true;
 
     mutable AlignedVector<VectorizedArray<double>> variable_densities_preconditioner;
     mutable AlignedVector<VectorizedArray<double>> variable_viscosities_preconditioner;
@@ -449,7 +452,7 @@ adaflo::NavierStokesMatrix<dim>::begin_stab_linearized_residuals(
 
 
 template <int dim>
-inline const dealii::VectorizedArray<double> *
+inline const typename adaflo::NavierStokesMatrix<dim>::stab_param_stored *
 adaflo::NavierStokesMatrix<dim>::begin_stab_param_values(
   const unsigned int macro_cell) const
 {

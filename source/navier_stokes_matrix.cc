@@ -105,13 +105,16 @@ adaflo::NavierStokesMatrix<dim>::initialize(const MatrixFree<dim> &matrix_free_i
       variable_damping_coefficients.resize(size, make_vectorized_array<double>(0));
     }
   if (parameters.linearization != FlowParameters::coupled_velocity_explicit ||
-      parameters.stabilization_navier_stokes != FlowParameters::none)
+      parameters.convection_stabilization_navier_stokes != FlowParameters::none)
     linearized_velocities.resize(size);
 
-  if (parameters.stabilization_navier_stokes != FlowParameters::none)
+  if (parameters.convection_stabilization_navier_stokes != FlowParameters::none)
     {
       stab_linearized_residuals.resize(size);
       stab_param_values.resize(size);
+
+      p_squared = make_vectorized_array<double>(Utilities::fixed_power<2>(
+        static_cast<double>(matrix_free->get_dof_handler(dof_index_u).get_fe().degree)));
 
       // For the computation of the stabilization parameter, the element length
       // is defined as the diameter of a volume-equivalent sphere in 3D,
@@ -122,19 +125,21 @@ adaflo::NavierStokesMatrix<dim>::initialize(const MatrixFree<dim> &matrix_free_i
 
           for (unsigned int cell = 0; cell < n_cell_batches; ++cell)
             {
-              VectorizedArray<double> cell_measure = VectorizedArray<double>();
+              double cell_measure;
               for (unsigned int v = 0;
                    v < matrix_free->n_active_entries_per_cell_batch(cell);
                    ++v)
-                cell_measure[v] =
-                  matrix_free->get_cell_iterator(cell, v, dof_index_u)->measure();
+                {
+                  cell_measure =
+                    matrix_free->get_cell_iterator(cell, v, dof_index_u)->measure();
 
-              if constexpr (dim == 3)
-                cell_diameters[cell] = pow(6. * cell_measure / numbers::PI, 1. / 3.);
-              else if constexpr (dim == 2)
-                cell_diameters[cell] = pow(4. * cell_measure / numbers::PI, 1. / 2.);
-              else if constexpr (dim == 1)
-                cell_diameters[cell] = cell_measure;
+                  if constexpr (dim == 3)
+                    cell_diameters[cell][v] = std::cbrt(6. * cell_measure / numbers::PI);
+                  else if constexpr (dim == 2)
+                    cell_diameters[cell][v] = std::sqrt(4. * cell_measure / numbers::PI);
+                  else if constexpr (dim == 1)
+                    cell_diameters[cell][v] = cell_measure;
+                }
             }
           do_update_cell_diameters = false;
         }
@@ -675,7 +680,7 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
       &stab_linearized_residuals[cell_range.first * velocity.n_q_points] :
       0;
 
-  vector_t *stab_param [[maybe_unused]] =
+  stab_param_stored *stab_param [[maybe_unused]] =
     stab_param_values.size() > 0 ?
       &stab_param_values[cell_range.first * velocity.n_q_points] :
       0;
@@ -717,7 +722,7 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
            EvaluationFlags::values :
            EvaluationFlags::nothing) |
         EvaluationFlags::gradients |
-        ((parameters.stabilization_navier_stokes != FlowParameters::none) ?
+        ((parameters.convection_stabilization_navier_stokes != FlowParameters::none) ?
            EvaluationFlags::hessians :
            EvaluationFlags::nothing));
 
@@ -746,14 +751,14 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
             get_pressure_values(pressure, src);
           pressure.evaluate(
             EvaluationFlags::values |
-            ((parameters.stabilization_navier_stokes != FlowParameters::none) ?
+            ((parameters.convection_stabilization_navier_stokes != FlowParameters::none) ?
                EvaluationFlags::gradients :
                EvaluationFlags::nothing));
         }
 
       if (LocalOps == NavierStokesOps::residual &&
-          parameters.stabilization_navier_stokes != FlowParameters::none)
-        compute_stabilization_parameter<degree_p>(velocity, cell);
+          parameters.convection_stabilization_navier_stokes != FlowParameters::none)
+        compute_stabilization_parameter(velocity, cell);
 
       // loop over all quadrature points and implement the Navier-Stokes
       // operation
@@ -833,7 +838,7 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
                                 res += old_val[e] * old_grad[d][e];
                               conv[d] += tau1 * res;
                             }
-                          if (parameters.stabilization_navier_stokes !=
+                          if (parameters.convection_stabilization_navier_stokes !=
                               FlowParameters::none)
                             linearized[q].first = old_val;
                         }
@@ -909,29 +914,23 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
 
               // The stabilization terms are added to the weak form and consist of
               // the strong-form momentum residual, multiplied by a stabilization
-              // parameter and an operator applied to the test function.
-              // SUPG: (∂t u + (u·∇)u + βu(∇·u) - K·u - ∇·τ + ∇p)·τ_stab(u·∇)w
-              // GLS:  (∂t u + (u·∇)u + βu(∇·u) - K·u - ∇·τ + ∇p)·τ_stab((u·∇)w - ∇·τ(w))
+              // parameter and an operator applied to the test function w.
+              // SUPG: (ρ(∂t u + (u·∇)u + βu(∇·u)) - K·u - ∇·τ + ∇p)·τ_stab(u·∇)w
+              // GLS:  (ρ(∂t u + (u·∇)u + βu(∇·u)) - K·u - ∇·τ + ∇p)·τ_stab((u·∇)w -
+              // ∇·τ(w))
 
-              if (parameters.stabilization_navier_stokes != FlowParameters::none)
+              if (parameters.convection_stabilization_navier_stokes !=
+                  FlowParameters::none)
                 {
                   Tensor<1, dim, vector_t> grad_p;
                   if (LocalOps == NavierStokesOps::residual ||
                       LocalOps == NavierStokesOps::vmult)
                     grad_p = convert_to_vector<dim, vector_t>(pressure.get_gradient(q));
 
-                  vector_t constitutive_factor;
+                  vector_t constitutive_factor = mu;
                   if (parameters.constitutive_type ==
-                      FlowParameters::newtonian_incompressible)
-                    constitutive_factor = mu;
-                  else if (parameters.constitutive_type ==
-                           FlowParameters::newtonian_compressible_stokes_hypothesis)
-                    constitutive_factor = mu * (1. - 2. / static_cast<double>(dim));
-                  else if (parameters.constitutive_type == FlowParameters::user_defined)
-                    AssertThrow(false,
-                                ExcMessage(
-                                  "SUPG and GLS stabilization are not yet available "
-                                  "for user-defined constitutive types."));
+                      FlowParameters::newtonian_compressible_stokes_hypothesis)
+                    constitutive_factor *= (1. - 2. / static_cast<double>(dim));
 
                   Tensor<1, dim, vector_t> div_viscous_stress;
                   if constexpr (dim == 3 || dim == 2)
@@ -961,10 +960,8 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
                   Tensor<1, dim, vector_t> strong_res_u =
                     conv - div_viscous_stress + grad_p;
 
-                  for (unsigned int d = 0; d < dim; ++d)
-                    for (unsigned int e = 0; e < dim; ++e)
-                      supg_contribution[d][e] =
-                        stab_param[q] * linearized[q].first[e] * strong_res_u[d];
+                  Tensor<1, dim, vector_t> tau_stab_times_res =
+                    stab_param[q].first * strong_res_u;
 
                   if (parameters.linearization ==
                         FlowParameters::coupled_implicit_newton &&
@@ -978,10 +975,20 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
                       for (unsigned int d = 0; d < dim; ++d)
                         for (unsigned int e = 0; e < dim; ++e)
                           supg_contribution[d][e] +=
-                            stab_param[q] * val_u[e] * strong_res_u_linearized[d];
+                            stab_param[q].first * val_u[e] * strong_res_u_linearized[d];
+
+                      tau_stab_times_res += stab_param[q].second *
+                                            (linearized[q].first * val_u) *
+                                            strong_res_u_linearized;
                     }
 
-                  if (parameters.stabilization_navier_stokes == FlowParameters::gls)
+                  for (unsigned int d = 0; d < dim; ++d)
+                    for (unsigned int e = 0; e < dim; ++e)
+                      supg_contribution[d][e] +=
+                        linearized[q].first[e] * tau_stab_times_res[d];
+
+                  if (parameters.convection_stabilization_navier_stokes ==
+                      FlowParameters::gls)
                     {
                       if constexpr (dim == 3 || dim == 2)
                         {
@@ -989,10 +996,9 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
                           for (unsigned int d = 0; d < dim; ++d)
                             for (unsigned int e = 0; e < dim; ++e)
                               {
-                                gls_contribution[d][e][e] -=
-                                  stab_param[q] * mu * strong_res_u[d];
+                                gls_contribution[d][e][e] -= mu * tau_stab_times_res[d];
                                 gls_contribution[e][d][e] -=
-                                  stab_param[q] * constitutive_factor * strong_res_u[d];
+                                  constitutive_factor * tau_stab_times_res[d];
                               }
 
                           velocity.submit_hessian(gls_contribution, q);
@@ -1001,7 +1007,7 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
                         {
                           Tensor<2, dim, vector_t> gls_contribution;
                           gls_contribution[0][0] =
-                            -stab_param[q] * (mu + constitutive_factor) * strong_res_u[0];
+                            -(mu + constitutive_factor) * tau_stab_times_res[0];
 
                           velocity.submit_hessian(gls_contribution, q);
                         }
@@ -1095,7 +1101,7 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
            EvaluationFlags::values :
            EvaluationFlags::nothing) |
         EvaluationFlags::gradients |
-        ((parameters.stabilization_navier_stokes == FlowParameters::gls) ?
+        ((parameters.convection_stabilization_navier_stokes == FlowParameters::gls) ?
            EvaluationFlags::hessians :
            EvaluationFlags::nothing));
       distribute_velocity_ltg(velocity, dst);
@@ -1119,17 +1125,15 @@ adaflo::NavierStokesMatrix<dim>::local_operation(
 
 
 template <int dim>
-template <int degree_p, typename FEEval>
+template <typename FEEval>
 void
 adaflo::NavierStokesMatrix<dim>::compute_stabilization_parameter(
-  FEEval            &velocity,
+  const FEEval      &velocity,
   const unsigned int cell) const
 {
   typedef VectorizedArray<double> vector_t;
 
   const vector_t h_squared = Utilities::fixed_power<2>(cell_diameters[cell]);
-  const vector_t p_squared = make_vectorized_array<double>(
-    Utilities::fixed_power<2>(static_cast<double>(degree_p) + 1.));
   const vector_t inverse_dt =
     parameters.physical_type == FlowParameters::incompressible ?
       make_vectorized_array<double>(1. / time_stepping->step_size()) :
@@ -1150,11 +1154,21 @@ adaflo::NavierStokesMatrix<dim>::compute_stabilization_parameter(
         convert_to_vector<dim, vector_t>(velocity.get_value(q));
       const vector_t u_mag_squared = u.norm_square();
 
-      stab_param_values[idx] =
+      vector_t tau_stab =
         1. /
         sqrt(Utilities::fixed_power<2>(inverse_dt) +
              4. * u_mag_squared * p_squared / h_squared +
              9. * Utilities::fixed_power<2>(4. * (mu / rho) * p_squared / h_squared));
+      stab_param_values[idx].first = tau_stab;
+
+      // The derivative of the stabilization parameter reads:
+      // d tau_stab / d u = (-4 * tau_stab^3 * p^2 / h^2) * u
+      // We only store the scalar prefactor in parentheses to avoid storing
+      // a vector at each quadrature point. In local_operation(), this prefactor
+      // is multiplied by the velocity vector to obtain the full derivative.
+      if (parameters.linearization == FlowParameters::coupled_implicit_newton)
+        stab_param_values[idx].second =
+          -4. * tau_stab * tau_stab * tau_stab * p_squared / h_squared;
     }
 }
 
@@ -1423,7 +1437,7 @@ adaflo::NavierStokesMatrix<dim>::print_memory_consumption(std::ostream &stream) 
          << 1e-6 * double(linearized_velocities.memory_consumption() +
                           linearized_velocities_preconditioner.memory_consumption())
          << " MB\n";
-  if (parameters.stabilization_navier_stokes != FlowParameters::none)
+  if (parameters.convection_stabilization_navier_stokes != FlowParameters::none)
     {
       stream << "| Stabilization: "
              << 1e-6 * double(stab_linearized_residuals.memory_consumption() +

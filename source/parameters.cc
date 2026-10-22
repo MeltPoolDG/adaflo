@@ -131,6 +131,17 @@ adaflo::FlowParameters::add_parameters(ParameterHandler &prm)
                     "convective form and to 0.5 for the skew-symmetric "
                     "form (default formulation).",
                     Patterns::Selection("skew-symmetric|convective|conservative"));
+  prm.add_parameter("convection stabilization type",
+                    convection_stabilization_navier_stokes_str,
+                    "Sets the stabilization method for the Navier-Stokes "
+                    "equations. For convection-dominated flows, the standard "
+                    "Galerkin formulation may lead to spurious oscillations "
+                    "in the solution. Two stabilization methods are available: "
+                    "SUPG (Streamline Upwind Petrov-Galerkin) and "
+                    "GLS (Galerkin Least-Squares). Both introduce additional terms "
+                    "into the weak form of the momentum equation in a consistent "
+                    "manner to improve numerical stability.",
+                    Patterns::Selection("none|SUPG|GLS"));
 
   prm.enter_subsection("Solver");
   prm.add_parameter("NL max iterations",
@@ -441,6 +452,23 @@ adaflo::FlowParameters::post()
   beta_convective_term_momentum_balance =
     get_beta_formulation_convective_term_momentum_balance
       [formulation_convective_term_momentum_balance];
+
+  if (convection_stabilization_navier_stokes_str == "none")
+    convection_stabilization_navier_stokes = none;
+  else if (convection_stabilization_navier_stokes_str == "SUPG")
+    convection_stabilization_navier_stokes = supg;
+  else if (convection_stabilization_navier_stokes_str == "GLS")
+    convection_stabilization_navier_stokes = gls;
+  else
+    Assert(false,
+           ExcMessage(("Stabilization " + convection_stabilization_navier_stokes_str +
+                       " not available")
+                        .c_str()));
+
+  if (convection_stabilization_navier_stokes != none && constitutive_type == user_defined)
+    AssertThrow(false,
+                ExcMessage("SUPG and GLS stabilization are not yet available "
+                           "for user-defined constitutive types."));
 
   if (linearization_str == "coupled implicit Newton")
     linearization = coupled_implicit_newton;

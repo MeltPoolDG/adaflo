@@ -54,6 +54,10 @@ namespace adaflo
     typedef std::pair<Tensor<1, dim, VectorizedArray<double>>,
                       Tensor<2, dim, VectorizedArray<double>>>
       velocity_stored;
+    typedef std::pair<Tensor<1, dim, VectorizedArray<double>>,
+                      Tensor<1, dim, VectorizedArray<double>>>
+      stab_residual_stored;
+    typedef std::pair<VectorizedArray<double>, VectorizedArray<double>> stab_param_stored;
     NavierStokesMatrix(
       const FlowParameters                                  &parameters,
       const unsigned int                                    &dof_index_u,
@@ -176,6 +180,13 @@ namespace adaflo
 
     const velocity_stored *
     begin_linearized_velocities(const unsigned int macro_cell) const;
+
+    const stab_residual_stored *
+    begin_stab_linearized_residuals(const unsigned int macro_cell) const;
+
+    const stab_param_stored *
+    begin_stab_param_values(const unsigned int macro_cell) const;
+
     bool
     use_variable_coefficients() const;
 
@@ -213,6 +224,11 @@ namespace adaflo
                     VectorType                                  &dst,
                     const VectorType                            &src,
                     const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+    template <typename FEEval>
+    void
+    compute_stabilization_parameter(const FEEval      &velocity,
+                                    const unsigned int cell) const;
 
     template <int degree_p, bool weight_by_viscosity>
     void
@@ -281,6 +297,12 @@ namespace adaflo
     mutable AlignedVector<VectorizedArray<double>> variable_viscosities;
     mutable AlignedVector<VectorizedArray<double>> variable_damping_coefficients;
     mutable AlignedVector<velocity_stored>         linearized_velocities;
+
+    mutable AlignedVector<stab_residual_stored> stab_linearized_residuals;
+    mutable AlignedVector<stab_param_stored>    stab_param_values;
+    AlignedVector<VectorizedArray<double>>      cell_diameters;
+    VectorizedArray<double>                     p_squared;
+    bool                                        do_update_cell_diameters = true;
 
     mutable AlignedVector<VectorizedArray<double>> variable_densities_preconditioner;
     mutable AlignedVector<VectorizedArray<double>> variable_viscosities_preconditioner;
@@ -408,6 +430,40 @@ adaflo::NavierStokesMatrix<dim>::begin_linearized_velocities(
                   matrix_free->n_cell_batches() *
                     matrix_free->get_n_q_points(quad_index_u));
   return &linearized_velocities[matrix_free->get_n_q_points(quad_index_u) * macro_cell];
+}
+
+
+
+template <int dim>
+inline const typename adaflo::NavierStokesMatrix<dim>::stab_residual_stored *
+adaflo::NavierStokesMatrix<dim>::begin_stab_linearized_residuals(
+  const unsigned int macro_cell) const
+{
+  if (stab_linearized_residuals.size() == 0)
+    return 0;
+
+  AssertIndexRange(macro_cell, matrix_free->n_cell_batches());
+  AssertDimension(stab_linearized_residuals.size(),
+                  matrix_free->n_cell_batches() *
+                    matrix_free->get_n_q_points(quad_index_u));
+  return &stab_linearized_residuals[matrix_free->get_n_q_points(quad_index_u) *
+                                    macro_cell];
+}
+
+
+template <int dim>
+inline const typename adaflo::NavierStokesMatrix<dim>::stab_param_stored *
+adaflo::NavierStokesMatrix<dim>::begin_stab_param_values(
+  const unsigned int macro_cell) const
+{
+  if (stab_param_values.size() == 0)
+    return 0;
+
+  AssertIndexRange(macro_cell, matrix_free->n_cell_batches());
+  AssertDimension(stab_param_values.size(),
+                  matrix_free->n_cell_batches() *
+                    matrix_free->get_n_q_points(quad_index_u));
+  return &stab_param_values[matrix_free->get_n_q_points(quad_index_u) * macro_cell];
 }
 
 #endif

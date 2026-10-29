@@ -1,6 +1,6 @@
 ARG DEALII_IMAGE_VERSION="master"
 
-FROM dealii/dealii:${DEALII_IMAGE_VERSION}-noble AS builder
+FROM dealii/dealii:${DEALII_IMAGE_VERSION}-resolute AS builder
 
 USER root
 

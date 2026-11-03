@@ -110,8 +110,9 @@ adaflo::NavierStokesMatrix<dim>::initialize(const MatrixFree<dim> &matrix_free_i
 
   if (parameters.convection_stabilization_navier_stokes != FlowParameters::none)
     {
-      stab_linearized_residuals.resize(size);
       stab_param_values.resize(size);
+      if (parameters.linearization == FlowParameters::coupled_implicit_newton)
+        stab_linearized_residuals.resize(size);
 
       p_squared = make_vectorized_array<double>(Utilities::fixed_power<2>(
         static_cast<double>(matrix_free->get_dof_handler(dof_index_u).get_fe().degree)));
@@ -226,6 +227,8 @@ adaflo::NavierStokesMatrix<dim>::clear()
   variable_viscosities_preconditioner.clear();
   variable_damping_coefficients_preconditioner.clear();
   linearized_velocities_preconditioner.clear();
+  stab_linearized_residuals_preconditioner.clear();
+  stab_param_values_preconditioner.clear();
 }
 
 
@@ -394,6 +397,8 @@ adaflo::NavierStokesMatrix<dim>::velocity_vmult(
       variable_densities.swap(variable_densities_preconditioner);
       variable_viscosities.swap(variable_viscosities_preconditioner);
       variable_damping_coefficients.swap(variable_damping_coefficients_preconditioner);
+      stab_linearized_residuals.swap(stab_linearized_residuals_preconditioner);
+      stab_param_values.swap(stab_param_values_preconditioner);
     }
 
 #define OPERATION(degree_p)                                                  \
@@ -414,6 +419,8 @@ adaflo::NavierStokesMatrix<dim>::velocity_vmult(
       variable_densities.swap(variable_densities_preconditioner);
       variable_viscosities.swap(variable_viscosities_preconditioner);
       variable_damping_coefficients.swap(variable_damping_coefficients_preconditioner);
+      stab_linearized_residuals.swap(stab_linearized_residuals_preconditioner);
+      stab_param_values.swap(stab_param_values_preconditioner);
     }
 
   // diagonal values of constrained degrees of freedom set to 1
@@ -1403,6 +1410,8 @@ void
 adaflo::NavierStokesMatrix<dim>::fix_linearization_point() const
 {
   linearized_velocities_preconditioner         = linearized_velocities;
+  stab_linearized_residuals_preconditioner     = stab_linearized_residuals;
+  stab_param_values_preconditioner             = stab_param_values;
   variable_densities_preconditioner            = variable_densities;
   variable_viscosities_preconditioner          = variable_viscosities;
   variable_damping_coefficients_preconditioner = variable_damping_coefficients;
@@ -1421,6 +1430,8 @@ adaflo::NavierStokesMatrix<dim>::memory_consumption() const
   memory += variable_densities.size();
   memory += variable_viscosities.size();
   memory += linearized_velocities_preconditioner.size();
+  memory += stab_linearized_residuals_preconditioner.size();
+  memory += stab_param_values_preconditioner.size();
   memory += variable_densities_preconditioner.size();
   memory += variable_viscosities_preconditioner.size();
   memory += variable_damping_coefficients_preconditioner.size();
@@ -1440,9 +1451,12 @@ adaflo::NavierStokesMatrix<dim>::print_memory_consumption(std::ostream &stream) 
   if (parameters.convection_stabilization_navier_stokes != FlowParameters::none)
     {
       stream << "| Stabilization: "
-             << 1e-6 * double(stab_linearized_residuals.memory_consumption() +
-                              stab_param_values.memory_consumption() +
-                              cell_diameters.memory_consumption())
+             << 1e-6 *
+                  double(stab_linearized_residuals.memory_consumption() +
+                         stab_param_values.memory_consumption() +
+                         cell_diameters.memory_consumption() +
+                         stab_linearized_residuals_preconditioner.memory_consumption() +
+                         stab_param_values_preconditioner.memory_consumption())
              << " MB\n";
     }
   if (variable_viscosities.size() > 0)

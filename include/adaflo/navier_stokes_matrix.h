@@ -309,6 +309,9 @@ namespace adaflo
     mutable AlignedVector<VectorizedArray<double>>
                                            variable_damping_coefficients_preconditioner;
     mutable AlignedVector<velocity_stored> linearized_velocities_preconditioner;
+    mutable AlignedVector<stab_residual_stored> stab_linearized_residuals_preconditioner;
+    mutable AlignedVector<stab_param_stored>    stab_param_values_preconditioner;
+
 
     const LinearAlgebra::distributed::BlockVector<double> &solution_old;
     const LinearAlgebra::distributed::BlockVector<double> &solution_old_old;

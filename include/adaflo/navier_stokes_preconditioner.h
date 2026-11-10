@@ -228,6 +228,8 @@ namespace adaflo
 
     mutable std::pair<unsigned int, double[5]> precond_timer;
 
+    const bool use_stabilization;
+
     void
     local_assemble_preconditioner(
       const MatrixFree<dim, double> &matrix_free,
